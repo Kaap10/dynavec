@@ -365,6 +365,14 @@ def test_graph_traversal_hops(db):
     assert {h.id for h in hits} == {"d1"}
 
 
+def test_graph_traversal_handles_cycles(db):
+    db.graph_add_edge("a", "related_to", "b")
+    db.graph_add_edge("b", "related_to", "c")
+    db.graph_add_edge("c", "related_to", "a")
+
+    assert set(db.graph_neighbors("a", hops=10)) == {"b", "c"}
+
+
 def test_semantic_cache_hits_on_repeat(db):
     from dynavec.cache import SemanticCache
 
