@@ -104,14 +104,21 @@ def test_client_from_env_full_configuration(monkeypatch):
 
 def test_client_from_env_embedder_resolution(monkeypatch):
     import dynavec.embeddings.gemini as gemini_mod
+    import dynavec.embeddings.mistral as mistral_mod
     import dynavec.embeddings.sentence_transformers as st_mod
     import dynavec.embeddings.voyage as voyage_mod
 
     monkeypatch.setattr(gemini_mod, "GeminiEmbedder", lambda **kw: MagicMock(dimension=768))
     monkeypatch.setattr(voyage_mod, "VoyageEmbedder", lambda **kw: MagicMock(dimension=1024))
+    monkeypatch.setattr(mistral_mod, "MistralEmbedder", lambda **kw: MagicMock(dimension=1024))
     monkeypatch.setattr(st_mod, "SentenceTransformerEmbedder", lambda **kw: MagicMock(dimension=384))
 
-    base_env = {"DYNAVEC_BUCKET": "b", "DYNAVEC_INDEX": "i", "DYNAVEC_TABLE": "t"}
+    base_env = {
+        "DYNAVEC_BUCKET": "b",
+        "DYNAVEC_INDEX": "i",
+        "DYNAVEC_TABLE": "t",
+        "DYNAVEC_REGION": "us-east-1",
+    }
 
     # Gemini
     c1 = client_from_env({**base_env, "GEMINI_API_KEY": "gkey"})
@@ -123,15 +130,20 @@ def test_client_from_env_embedder_resolution(monkeypatch):
     assert c2.embedder is not None
     assert c2.config.dimension == 1024
 
-    # Sentence Transformers
-    c3 = client_from_env({**base_env, "DYNAVEC_EMBEDDER": "sentence-transformers"})
+    # Mistral
+    c3 = client_from_env({**base_env, "MISTRAL_API_KEY": "mkey"})
     assert c3.embedder is not None
-    assert c3.config.dimension == 384
+    assert c3.config.dimension == 1024
+
+    # Sentence Transformers
+    c4 = client_from_env({**base_env, "DYNAVEC_EMBEDDER": "sentence-transformers"})
+    assert c4.embedder is not None
+    assert c4.config.dimension == 384
 
     # None
-    c4 = client_from_env({**base_env, "DYNAVEC_EMBEDDER": "none"})
-    assert c4.embedder is None
-    assert c4.config.dimension == 1536
+    c5 = client_from_env({**base_env, "DYNAVEC_EMBEDDER": "none"})
+    assert c5.embedder is None
+    assert c5.config.dimension == 1536
 
 
 def test_mcp_server_search_tool(fake_mcp):

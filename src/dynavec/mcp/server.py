@@ -27,6 +27,8 @@ def _resolve_embedder(env: Mapping[str, str]):
             embedder_type = "gemini"
         elif env.get("VOYAGE_API_KEY"):
             embedder_type = "voyage"
+        elif env.get("MISTRAL_API_KEY"):
+            embedder_type = "mistral"
 
     if not embedder_type or embedder_type in ("none", "false", "0"):
         return None
@@ -46,6 +48,10 @@ def _resolve_embedder(env: Mapping[str, str]):
         from ..embeddings.voyage import VoyageEmbedder
 
         return VoyageEmbedder(model=model or "voyage-4", api_key=env.get("VOYAGE_API_KEY"))
+    if embedder_type == "mistral":
+        from ..embeddings.mistral import MistralEmbedder
+
+        return MistralEmbedder(model=model or "mistral-embed", api_key=env.get("MISTRAL_API_KEY"))
     if embedder_type == "bedrock":
         from ..embeddings.bedrock import BedrockEmbedder
 
