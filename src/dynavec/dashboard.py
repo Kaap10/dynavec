@@ -25,7 +25,7 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from .telemetry import TelemetryRecorder, aggregate
+from .telemetry import TelemetryRecorder, aggregate, aggregate_eval
 
 _INDEX_HTML = r"""<!doctype html>
 <html lang="en"><head>
@@ -242,6 +242,18 @@ def _make_handler(recorder: TelemetryRecorder):
                 if ev is None:
                     return self._send(404, json.dumps({"error": "not found"}))
                 return self._send(200, json.dumps(ev.to_dict()))
+            if path == "/api/eval/summary":
+                window = int(qs.get("window", ["86400"])[0])
+                return self._send(200, json.dumps(aggregate_eval(recorder.snapshot(), window)))
+            if path == "/api/eval/runs":
+                limit = int(qs.get("limit", ["50"])[0])
+                all_events = recorder.events(limit=recorder._events.maxlen or 10000)
+                eval_runs = [
+                    e.to_dict()
+                    for e in all_events
+                    if e.eval_faithfulness is not None or e.eval_relevance is not None
+                ][:limit]
+                return self._send(200, json.dumps(eval_runs))
             return self._send(404, json.dumps({"error": "not found"}))
 
     return Handler

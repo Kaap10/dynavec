@@ -34,6 +34,8 @@ export interface TraceEvent {
   status: string;
   error: string | null;
   query_preview: string | null;
+  eval_faithfulness?: number | null;
+  eval_relevance?: number | null;
 }
 
 export interface TraceFilters {
