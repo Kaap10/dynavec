@@ -310,7 +310,11 @@ cache = SemanticCache(max_size=2_048, max_bytes=64 * 1024 * 1024)
 
 ## Status
 
-**v0.2** — everything in the table above, on top of the v0.1 hybrid core (pluggable embedders, RRF, MMR, provisioning). 61 tests. **Roadmap (v0.3):** native asyncio client (`aioboto3`), in-process `hnswlib` hot tier, sparse/BM25 hybrid computed from DynamoDB, sort-key graph adjacency for very high fan-out, and turnkey file parsers (PDF/DOCX/PPTX/XLSX) as ingestion sources.
+**v0.3.0 (current)** — adds async embeddings, three more embedders (Mistral, Voyage AI, Bedrock Titan multimodal images), the SPFresh hot tier for fresh vectors, PDF ingestion, a FastMCP search server, the observability dashboard, and `max_pool_connections` tuning — on top of the v0.2 feature set and the v0.1 hybrid core (pluggable embedders, RRF, MMR, provisioning).
+
+See the full history in **[CHANGELOG.md](CHANGELOG.md)**, the browsable **[Release notes](https://codeforstartups.github.io/dynavec/docs/release-notes.html)** page, or the **[GitHub Releases](https://github.com/codeforstartups/dynavec/releases)** tab.
+
+**Roadmap (v0.4):** in-process `hnswlib` hot tier, sparse/BM25 hybrid computed from DynamoDB, sort-key graph adjacency for very high fan-out, and more turnkey file parsers (DOCX/PPTX/XLSX) as ingestion sources.
 
 ## Publishing (maintainers)
 
@@ -319,7 +323,7 @@ cache = SemanticCache(max_size=2_048, max_bytes=64 * 1024 * 1024)
 **Automated (recommended)** — a GitHub Release triggers [`.github/workflows/publish.yml`](.github/workflows/publish.yml), which builds and uploads via **PyPI Trusted Publishing (OIDC)** — no API token stored anywhere. One-time setup: on PyPI, add a *pending publisher* for project `dynavec`, repo `codeforstartups/dynavec`, workflow `publish.yml`, environment `pypi`. Then:
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0     # then publish a GitHub Release for the tag
+git tag v0.3.0 && git push origin v0.3.0     # then publish a GitHub Release for the tag
 ```
 
 **Manual** — if you'd rather push from your machine with a token:

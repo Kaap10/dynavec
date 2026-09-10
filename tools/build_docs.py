@@ -43,6 +43,9 @@ NAV = [
         ("integrations", "Framework integrations"),
         ("benchmarking", "Benchmarking"),
     ]),
+    ("About", [
+        ("release-notes", "Release notes"),
+    ]),
 ]
 
 # flat order for prev/next
@@ -684,6 +687,56 @@ python -m benchmarks.report --qpm 1_000_000
 """) + """
 <div class="callout">Cost figures are cost-model estimates from public list prices. Competitor recall/latency
 are representative until you run the live benchmark against your own account.</div>
+""")
+
+PAGES["release-notes"] = ("Release notes",
+    "What changed in each version of dynavec, newest first.",
+    """
+<p>dynavec follows <a href="https://semver.org/">semantic versioning</a>. Upgrade with:</p>
+""" + code("""pip install --upgrade dynavec
+uv pip install --upgrade dynavec""") + """
+<p>The full machine-readable history lives in
+<a href="https://github.com/codeforstartups/dynavec/blob/development/CHANGELOG.md">CHANGELOG.md</a>,
+and every version is a
+<a href="https://github.com/codeforstartups/dynavec/releases">GitHub Release</a>.</p>
+
+<h2 id="v0-3-0">0.3.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-09-10</span></h2>
+<p>A big feature release focused on more embedders, async, freshness, ingestion, and observability.</p>
+<h3>Added</h3>
+<ul>
+  <li><strong>Async embeddings</strong> &mdash; <code>aembed_documents</code> / <code>aembed_query</code>
+      on every backend, offloading sync clients to threads via <code>asyncio.to_thread</code>.</li>
+  <li><strong>New embedding backends</strong> &mdash; Mistral, Voyage AI, and Bedrock Titan
+      <strong>multimodal image</strong> embeddings.</li>
+  <li><strong>SPFresh hot-tier</strong> &mdash; incremental hot-index rebalancing for freshly
+      upserted vectors, so new data is searchable without a full rebuild.</li>
+  <li><strong>PDF ingestion source</strong> for the document pipeline.</li>
+  <li><strong>FastMCP server</strong> exposing semantic and graph search as MCP tools.</li>
+  <li><strong>Observability</strong> &mdash; a native telemetry recorder plus a stdlib dashboard on
+      real query data, and a full Next.js + TypeScript + Tailwind + Recharts dashboard under
+      <code>dashboard/</code>.</li>
+  <li><strong><code>max_pool_connections</code></strong> config, threaded into every boto3 client
+      for high-concurrency workloads.</li>
+  <li><code>list_vectors</code> maintenance iterator, optional score normalization,
+      cache <code>hits</code>/<code>misses</code> counters + <code>stats()</code>, an AWS doctor
+      command, ingestion chunk deduplication, and a shipped <code>py.typed</code> marker.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+  <li>The semantic cache is now bounded by <strong>bytes</strong> rather than entry count.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+  <li>Escape structured-storage key components to avoid namespace/id collisions.</li>
+  <li>Drain <code>QueryVectors</code> pages fully and add a <code>page_size</code> control.</li>
+  <li>Pin <code>crewai</code> away from the yanked 1.14.0 release.</li>
+  <li>Resolve optional dependencies correctly on Python 3.9.</li>
+</ul>
+
+<h2 id="v0-2-0">0.2.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-08</span></h2>
+<p>Initial public release: the hybrid Amazon DynamoDB + Amazon S3 Vectors store, pluggable
+embedders, namespace RAG, product quantization, RRF fusion, MMR rerank, the GraphRAG layer,
+caching backends, framework adapters, and one-shot provisioning.</p>
 """)
 
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Knowledge graph · dynavec docs</title>
+  <title>Release notes · dynavec docs</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -57,7 +57,7 @@
 <li><a href="caching.html">Caching</a></li>
 </ul></div>
 <div class="side__group"><p class="side__title">Advanced</p><ul class="side__list">
-<li><a href="knowledge-graph.html" class="is-current">Knowledge graph</a></li>
+<li><a href="knowledge-graph.html">Knowledge graph</a></li>
 <li><a href="quantization.html">Product quantization</a></li>
 <li><a href="concurrency.html">Concurrency</a></li>
 <li><a href="credentials.html">Credentials & IAM</a></li>
@@ -67,35 +67,61 @@
 <li><a href="benchmarking.html">Benchmarking</a></li>
 </ul></div>
 <div class="side__group"><p class="side__title">About</p><ul class="side__list">
-<li><a href="release-notes.html">Release notes</a></li>
+<li><a href="release-notes.html" class="is-current">Release notes</a></li>
 </ul></div>
 </nav>
     <main class="doc">
-      <div class="doc__crumbs"><a href="../index.html">dynavec</a> / <a href="index.html">Docs</a> / Knowledge graph</div>
-      <h1>Knowledge graph</h1>
-      <p class="doc__sub">Attach meaning to embeddings and traverse it to guide search.</p>
+      <div class="doc__crumbs"><a href="../index.html">dynavec</a> / <a href="index.html">Docs</a> / Release notes</div>
+      <h1>Release notes</h1>
+      <p class="doc__sub">What changed in each version of dynavec, newest first.</p>
       
-<p>Alongside the vector index, dynavec keeps a lightweight entity-relationship graph in DynamoDB. Entities link
-to documents; you can traverse the graph first (cheap key lookups) to gather a candidate set, then rank only
-those against the query embedding. That is the DynamoDB → S3 Vectors reference join.</p>
-<pre class="code"><code># build the graph
-db.graph_add_edge("acme", "competes_with", "globex", namespace="kb")
-db.graph_link("acme", ["doc-1", "doc-2"], namespace="kb")
+<p>dynavec follows <a href="https://semver.org/">semantic versioning</a>. Upgrade with:</p>
+<pre class="code"><code>pip install --upgrade dynavec
+uv pip install --upgrade dynavec</code></pre>
+<p>The full machine-readable history lives in
+<a href="https://github.com/codeforstartups/dynavec/blob/development/CHANGELOG.md">CHANGELOG.md</a>,
+and every version is a
+<a href="https://github.com/codeforstartups/dynavec/releases">GitHub Release</a>.</p>
 
-# GraphRAG: traverse from seeds, then rank related docs by the query
-hits = db.graph_search(
-    "recent product launches",
-    seed_entities=["acme"],
-    hops=2,
-    top_k=10,
-    namespace="kb",
-)</code></pre>
-<p>Traversal helpers: <code>graph_add_node</code>, <code>graph_add_edge</code>, <code>graph_link</code>,
-<code>graph_neighbors</code>.</p>
-<div class="callout">The graph uses embedded adjacency lists (one item per node). Very high fan-out entities
-want a sort-key adjacency design — on the roadmap.</div>
+<h2 id="v0-3-0">0.3.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-09-10</span></h2>
+<p>A big feature release focused on more embedders, async, freshness, ingestion, and observability.</p>
+<h3>Added</h3>
+<ul>
+  <li><strong>Async embeddings</strong> &mdash; <code>aembed_documents</code> / <code>aembed_query</code>
+      on every backend, offloading sync clients to threads via <code>asyncio.to_thread</code>.</li>
+  <li><strong>New embedding backends</strong> &mdash; Mistral, Voyage AI, and Bedrock Titan
+      <strong>multimodal image</strong> embeddings.</li>
+  <li><strong>SPFresh hot-tier</strong> &mdash; incremental hot-index rebalancing for freshly
+      upserted vectors, so new data is searchable without a full rebuild.</li>
+  <li><strong>PDF ingestion source</strong> for the document pipeline.</li>
+  <li><strong>FastMCP server</strong> exposing semantic and graph search as MCP tools.</li>
+  <li><strong>Observability</strong> &mdash; a native telemetry recorder plus a stdlib dashboard on
+      real query data, and a full Next.js + TypeScript + Tailwind + Recharts dashboard under
+      <code>dashboard/</code>.</li>
+  <li><strong><code>max_pool_connections</code></strong> config, threaded into every boto3 client
+      for high-concurrency workloads.</li>
+  <li><code>list_vectors</code> maintenance iterator, optional score normalization,
+      cache <code>hits</code>/<code>misses</code> counters + <code>stats()</code>, an AWS doctor
+      command, ingestion chunk deduplication, and a shipped <code>py.typed</code> marker.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+  <li>The semantic cache is now bounded by <strong>bytes</strong> rather than entry count.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+  <li>Escape structured-storage key components to avoid namespace/id collisions.</li>
+  <li>Drain <code>QueryVectors</code> pages fully and add a <code>page_size</code> control.</li>
+  <li>Pin <code>crewai</code> away from the yanked 1.14.0 release.</li>
+  <li>Resolve optional dependencies correctly on Python 3.9.</li>
+</ul>
 
-      <div class="doc__next"><a href="caching.html"><span>Previous</span>Caching</a><a href="quantization.html" style="text-align:right"><span>Next</span>Product quantization</a></div>
+<h2 id="v0-2-0">0.2.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-08</span></h2>
+<p>Initial public release: the hybrid Amazon DynamoDB + Amazon S3 Vectors store, pluggable
+embedders, namespace RAG, product quantization, RRF fusion, MMR rerank, the GraphRAG layer,
+caching backends, framework adapters, and one-shot provisioning.</p>
+
+      <div class="doc__next"><a href="benchmarking.html"><span>Previous</span>Benchmarking</a></div>
     </main>
   </div>
 
