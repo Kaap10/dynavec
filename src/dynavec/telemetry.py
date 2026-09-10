@@ -33,20 +33,16 @@ class TelemetryEvent:
     id: str
     ts: float  # epoch seconds (start)
     op: str  # "search" | "upsert" | "graph_search" | ...
-    ts: float  # epoch seconds (start)
-    op: str  # "search" | "upsert" | "graph_search" | ...
     namespace: str = "default"
     latency_ms: float = 0.0
     n_results: int = 0
     top_k: int | None = None
-    cache_hit: bool | None = None  # None = no cache configured
     cache_hit: bool | None = None  # None = no cache configured
     filtered: bool = False
     rescore: str | None = None
     rerank: str | None = None
     score_top: float | None = None
     score_mean: float | None = None
-    status: str = "ok"  # "ok" | "error"
     status: str = "ok"  # "ok" | "error"
     error: str | None = None
     query_preview: str | None = None  # only set when capture_text=True
