@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -193,11 +194,23 @@ class DynamoDBCache(BaseCache):
 
     Enable DynamoDB TTL on the ``ttl`` attribute of your table for automatic
     eviction (items are also treated as expired client-side as a safety net).
+    ``ttl_jitter_seconds`` adds a random delay of up to the configured number
+    of seconds to each expiry, spreading simultaneous writes across an expiry
+    window to reduce cache stampedes.
     """
 
-    def __init__(self, config, boto_session=None, ttl_seconds: int = 3600) -> None:
+    def __init__(
+        self,
+        config,
+        boto_session=None,
+        ttl_seconds: int = 3600,
+        ttl_jitter_seconds: int = 0,
+    ) -> None:
         super().__init__()
         import boto3
+
+        if ttl_jitter_seconds < 0:
+            raise ValueError("ttl_jitter_seconds must be non-negative")
 
         session = boto_session or boto3.Session()
         resource_kwargs: dict[str, object] = {"region_name": config.region}
@@ -206,6 +219,7 @@ class DynamoDBCache(BaseCache):
             resource_kwargs["config"] = botocore_config
         self._table = session.resource("dynamodb", **resource_kwargs).Table(config.table)  # type: ignore[arg-type]
         self.ttl_seconds = ttl_seconds
+        self.ttl_jitter_seconds = ttl_jitter_seconds
 
     @staticmethod
     def _pk(namespace, query_vector, top_k, filter) -> str:
@@ -226,12 +240,13 @@ class DynamoDBCache(BaseCache):
         return _deserialize(item["results"])
 
     def put(self, namespace, query_vector, top_k, filter, results):
+        jitter = random.randint(0, self.ttl_jitter_seconds)
         self._table.put_item(
             Item={
                 "pk": self._pk(namespace, query_vector, top_k, filter),
                 "kind": "querycache",
                 "results": _serialize(results),
-                "ttl": int(time.time()) + self.ttl_seconds,
+                "ttl": int(time.time()) + self.ttl_seconds + jitter,
             }
         )
 
