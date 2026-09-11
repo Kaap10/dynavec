@@ -4,8 +4,10 @@ import sys
 from types import SimpleNamespace
 
 from dynavec.exceptions import MissingDependencyError
-from dynavec.ingest import MCPResourceSource, PDFSource, Record, chunk_text, ingest
+from dynavec.ingest import MCPResourceSource, PDFSource, URLSource, Record, chunk_text, ingest
 from dynavec.models import UpsertResult
+
+import requests
 
 
 def test_chunk_text_windows_with_overlap():
@@ -81,6 +83,81 @@ def test_pdf_source_missing_dependency(monkeypatch):
 
     with pytest.raises(MissingDependencyError, match=r"dynavec\[ingest\]"):
         PDFSource("sample.pdf")
+
+
+
+def test_url_source_yields_readable_text(monkeypatch):
+    class FakeResponse:
+        text = """
+        <html>
+            <head>
+                <script>alert("ignore me")</script>
+                <style>body { color: red; }</style>
+            </head>
+            <body>
+                <h1>Hello Dynavec</h1>
+                <p>This is useful content.</p>
+            </body>
+        </html>
+        """
+
+        def raise_for_status(self):
+            pass
+
+    def fake_get(url, timeout, headers):
+        assert url == "https://example.com"
+        assert timeout == 10
+        assert headers["User-Agent"] == "dynavec/1.0"
+        return FakeResponse()
+
+    monkeypatch.setattr("dynavec.ingest.requests.get", fake_get)
+
+    records = list(URLSource("https://example.com"))
+
+    assert len(records) == 1
+    assert records[0].id == "https://example.com"
+    assert "Hello Dynavec" in records[0].text
+    assert "This is useful content." in records[0].text
+    assert "alert" not in records[0].text
+    assert "color: red" not in records[0].text
+    assert records[0].metadata == {
+        "source": "url",
+        "url": "https://example.com",
+    }
+
+
+def test_url_source_raises_for_http_error(monkeypatch):
+    import pytest
+    class FakeResponse:
+        text = ""
+
+        def raise_for_status(self):
+            raise requests.HTTPError("404 Not Found")
+
+    def fake_get(url, timeout, headers):
+        return FakeResponse()
+
+    monkeypatch.setattr("dynavec.ingest.requests.get", fake_get)
+
+    with pytest.raises(requests.HTTPError):
+        list(URLSource("https://example.com/missing"))
+
+
+def test_url_source_skips_empty_pages(monkeypatch):
+    class FakeResponse:
+        text = "<html><body></body></html>"
+
+        def raise_for_status(self):
+            pass
+
+    def fake_get(url, timeout, headers):
+        return FakeResponse()
+
+    monkeypatch.setattr("dynavec.ingest.requests.get", fake_get)
+
+    records = list(URLSource("https://example.com"))
+
+    assert records == []
 
 
 # ---- fake MCP session mirroring the SDK's list_resources / read_resource ----
