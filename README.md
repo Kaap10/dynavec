@@ -341,6 +341,33 @@ uv publish                                    # uses UV_PUBLISH_TOKEN / prompts
 
 Bump the version in **both** `pyproject.toml` and `src/dynavec/__init__.py` before releasing.
 
+## 🫂 Community
+
+If you want to get more involved with dynavec, join our [WhatsApp community](https://chat.whatsapp.com/D73Mf1aDyIZHHMCgd32XHg). It's a friendly space to talk about vector search, RAG, AWS costs, production issues, and everything in between — ask questions, share what you're building, or help others out.
+
+## Contributors
+
+```
++----------------------------------------------------------------------------+
+|     +----------------------------------------------------------------+     |
+|     | Developers: Those who built with `dynavec`.                    |     |
+|     | (You have `import dynavec` somewhere in your project)          |     |
+|     |     +----------------------------------------------------+     |     |
+|     |     | Contributors: Those who make `dynavec` better.     |     |     |
+|     |     | (You make a PR to this repo)                       |     |     |
+|     |     +----------------------------------------------------+     |     |
+|     +----------------------------------------------------------------+     |
++----------------------------------------------------------------------------+
+```
+
+We welcome contributions from the community! Whether it's bug fixes, feature additions, or documentation improvements, your input is valuable. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide, and browse [good first issues](https://github.com/codeforstartups/dynavec/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) to get started.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
 ## License
 
 Apache-2.0
