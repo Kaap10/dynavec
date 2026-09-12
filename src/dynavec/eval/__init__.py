@@ -1,4 +1,4 @@
-"""LLM-as-a-Judge evaluation framework for RAG faithfulness and answer relevance."""
+"""Evaluation framework for RAG faithfulness, answer relevance, and retrieval quality (Recall/MRR/nDCG)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .base import (
     RAGEvalResult,
     extract_json,
 )
-from .chart import plot_eval_summary
+from .chart import plot_eval_summary, plot_retrieval_metrics
 from .judges import (
     BedrockJudge,
     CustomJudge,
@@ -23,12 +23,23 @@ from .metrics import (
     evaluate_faithfulness,
     evaluate_rag,
 )
+from .retrieval import (
+    LabeledQuery,
+    RetrievalEvalRunner,
+    RetrievalEvalSummary,
+    RetrievalMetricResult,
+    compute_mrr,
+    compute_ndcg_at_k,
+    compute_precision_at_k,
+    compute_recall_at_k,
+)
 from .runner import (
     EvalRunner,
     EvalSummary,
 )
 
 __all__ = [
+    # LLM Judge & Data Models
     "BaseJudge",
     "OpenAIJudge",
     "BedrockJudge",
@@ -46,4 +57,14 @@ __all__ = [
     "EvalRunner",
     "EvalSummary",
     "plot_eval_summary",
+    # Information Retrieval (IR) Evaluation
+    "LabeledQuery",
+    "RetrievalMetricResult",
+    "RetrievalEvalSummary",
+    "RetrievalEvalRunner",
+    "compute_recall_at_k",
+    "compute_mrr",
+    "compute_ndcg_at_k",
+    "compute_precision_at_k",
+    "plot_retrieval_metrics",
 ]

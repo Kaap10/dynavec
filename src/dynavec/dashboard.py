@@ -251,7 +251,11 @@ def _make_handler(recorder: TelemetryRecorder):
                 eval_runs = [
                     e.to_dict()
                     for e in all_events
-                    if e.eval_faithfulness is not None or e.eval_relevance is not None
+                    if e.eval_faithfulness is not None
+                    or e.eval_relevance is not None
+                    or e.eval_recall is not None
+                    or e.eval_mrr is not None
+                    or e.eval_ndcg is not None
                 ][:limit]
                 return self._send(200, json.dumps(eval_runs))
             return self._send(404, json.dumps({"error": "not found"}))
