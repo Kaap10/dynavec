@@ -65,6 +65,69 @@ S3 Vectors **is** the ANN engine — AWS manages the index internally, so you do
 
 ## Quick start
 
+Three steps to your first semantic search — everything runs inside **your own AWS account**.
+
+### 1. Install
+
+```bash
+pip install dynavec            # or: uv add dynavec
+pip install "dynavec[openai]"  # add an embedder extra so dynavec can embed for you
+```
+
+### 2. Grant AWS access
+
+dynavec needs an IAM identity with permission for **Amazon S3 Vectors** + **Amazon DynamoDB**. Create an IAM user, attach the policy below, and export its keys (or use an IAM role / profile — see [Provisioning & IAM](#provisioning--iam)).
+
+```bash
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_DEFAULT_REGION=us-east-1
+```
+
+<details>
+<summary><strong>Minimum IAM policy</strong> (click to expand)</summary>
+
+Replace `REGION` and `ACCOUNT_ID`. `dynamodb:Scan` is only needed for the GraphRAG feature; the `Create*`/`Delete*` actions are only needed for `auto_provision=True`.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynavecS3Vectors",
+      "Effect": "Allow",
+      "Action": [
+        "s3vectors:CreateVectorBucket", "s3vectors:GetVectorBucket",
+        "s3vectors:ListVectorBuckets", "s3vectors:DeleteVectorBucket",
+        "s3vectors:CreateIndex", "s3vectors:GetIndex",
+        "s3vectors:ListIndexes", "s3vectors:DeleteIndex",
+        "s3vectors:PutVectors", "s3vectors:GetVectors",
+        "s3vectors:ListVectors", "s3vectors:QueryVectors", "s3vectors:DeleteVectors"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DynavecDynamoDB",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable", "dynamodb:DescribeTable", "dynamodb:DeleteTable",
+        "dynamodb:BatchWriteItem", "dynamodb:BatchGetItem",
+        "dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem", "dynamodb:Query", "dynamodb:Scan"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/dynavec_*",
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/dynavec_*/index/*"
+      ]
+    }
+  ]
+}
+```
+
+</details>
+
+### 3. Run your first query
+
 ```python
 from dynavec import Dynavec, DynavecConfig, Document
 from dynavec.embeddings import OpenAIEmbedder   # or Gemini / Bedrock / SentenceTransformer
