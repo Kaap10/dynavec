@@ -3,6 +3,24 @@
 All notable changes to dynavec are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-12
+
+### Added
+- **In-memory hot tier** (#186) — opt-in `hot_tier=True` keeps the hot working
+  set in RAM via the built-in `SPFreshHotIndex`. After `db.warm(namespace)`, a
+  namespace is served **entirely from memory** — no S3 Vectors query and no
+  DynamoDB hydration — for in-memory-engine latency without a paid cluster.
+  Write-through on upsert/update/delete keeps it current; filters, rescore, and
+  MMR run on the hot path; non-authoritative namespaces fall back to S3 safely.
+  New: `warm()`, `hot_stats()`, and `hot_tier*` config.
+- **Retrieval quality runner** (#185) — recall@k, MRR, and nDCG@k evaluation.
+- **Async LangChain retrieval** (#183) — `asimilarity_search` /
+  `asimilarity_search_with_score` / `amax_marginal_relevance_search`, so the
+  retriever `ainvoke()` path runs on an owned async surface (closes #70).
+- **Graph export** (#182) — `graph_export()` to Mermaid and Graphviz DOT.
+- **Ollama local embedder** (#180) and **URL ingestion source** (#181).
+- **Markdown directory ingestion** (#174) and **DynamoDB cache TTL jitter** (#145).
+
 ## [0.3.0] - 2026-09-10
 
 ### Added

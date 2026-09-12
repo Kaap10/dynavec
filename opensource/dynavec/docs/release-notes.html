@@ -84,6 +84,21 @@ uv pip install --upgrade dynavec</code></pre>
 and every version is a
 <a href="https://github.com/codeforstartups/dynavec/releases">GitHub Release</a>.</p>
 
+<h2 id="v0-4-0">0.4.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-09-12</span></h2>
+<p>Headlined by the in-memory hot tier for in-memory-engine latency without a paid cluster.</p>
+<h3>Added</h3>
+<ul>
+  <li><strong>In-memory hot tier</strong> &mdash; <code>hot_tier=True</code> + <code>db.warm(namespace)</code>
+      serve a namespace entirely from RAM (no S3 Vectors query, no DynamoDB hydration). Write-through
+      keeps it current; filters/rescore/MMR run on the hot path; non-authoritative namespaces fall back
+      to S3 safely. See <a href="hot-tier.html">In-memory hot tier</a>.</li>
+  <li><strong>Retrieval quality runner</strong> &mdash; recall@k, MRR, and nDCG@k evaluation.</li>
+  <li><strong>Async LangChain retrieval</strong> &mdash; <code>asimilarity_search</code> and friends,
+      so the retriever <code>ainvoke()</code> path runs on an owned async surface.</li>
+  <li><strong>Graph export</strong> to Mermaid and Graphviz DOT; an <strong>Ollama</strong> embedder;
+      and <strong>URL</strong> + <strong>Markdown</strong> ingestion sources.</li>
+</ul>
+
 <h2 id="v0-3-0">0.3.0 <span class="doc__sub" style="font-weight:400">&mdash; 2026-09-10</span></h2>
 <p>A big feature release focused on more embedders, async, freshness, ingestion, and observability.</p>
 <h3>Added</h3>

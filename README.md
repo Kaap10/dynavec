@@ -378,11 +378,11 @@ cache = SemanticCache(max_size=2_048, max_bytes=64 * 1024 * 1024)
 
 ## Status
 
-**v0.3.0 (current)** — adds async embeddings, three more embedders (Mistral, Voyage AI, Bedrock Titan multimodal images), the SPFresh hot tier for fresh vectors, PDF ingestion, a FastMCP search server, the observability dashboard, and `max_pool_connections` tuning — on top of the v0.2 feature set and the v0.1 hybrid core (pluggable embedders, RRF, MMR, provisioning).
+**v0.4.0 (current)** — adds the **in-memory hot tier** (`hot_tier=True` + `warm()`: serve a namespace entirely from RAM for in-memory-engine latency without a paid cluster), a retrieval-quality runner (recall@k / MRR / nDCG), async LangChain retrieval, graph export (Mermaid / Graphviz), an Ollama embedder, and URL/Markdown ingestion — on top of the v0.3 feature set and the v0.1 hybrid core.
 
 See the full history in **[CHANGELOG.md](CHANGELOG.md)**, the browsable **[Release notes](https://codeforstartups.github.io/dynavec/docs/release-notes.html)** page, or the **[GitHub Releases](https://github.com/codeforstartups/dynavec/releases)** tab.
 
-**Roadmap (v0.4):** in-process `hnswlib` hot tier, sparse/BM25 hybrid computed from DynamoDB, sort-key graph adjacency for very high fan-out, and more turnkey file parsers (DOCX/PPTX/XLSX) as ingestion sources.
+**Roadmap (v0.5):** optional `hnswlib`/`faiss` hot-tier backend for very large hot sets, sparse/BM25 hybrid computed from DynamoDB, and more turnkey file parsers (DOCX/PPTX/XLSX) as ingestion sources.
 
 ## Publishing (maintainers)
 
