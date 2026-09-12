@@ -36,6 +36,9 @@ export interface TraceEvent {
   query_preview: string | null;
   eval_faithfulness?: number | null;
   eval_relevance?: number | null;
+  eval_recall?: number | null;
+  eval_mrr?: number | null;
+  eval_ndcg?: number | null;
 }
 
 export interface TraceFilters {

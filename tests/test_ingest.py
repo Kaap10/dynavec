@@ -3,11 +3,11 @@
 import sys
 from types import SimpleNamespace
 
-from dynavec.exceptions import MissingDependencyError
-from dynavec.ingest import MCPResourceSource, PDFSource, URLSource, Record, chunk_text, ingest
-from dynavec.models import UpsertResult
-
 import requests
+
+from dynavec.exceptions import MissingDependencyError
+from dynavec.ingest import MCPResourceSource, PDFSource, Record, URLSource, chunk_text, ingest
+from dynavec.models import UpsertResult
 
 
 def test_chunk_text_windows_with_overlap():

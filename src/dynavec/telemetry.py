@@ -48,6 +48,9 @@ class TelemetryEvent:
     query_preview: str | None = None  # only set when capture_text=True
     eval_faithfulness: float | None = None  # 0.0-1.0 when LLM judge ran
     eval_relevance: float | None = None  # 0.0-1.0 when LLM judge ran
+    eval_recall: float | None = None  # 0.0-1.0 recall@k score
+    eval_mrr: float | None = None  # 0.0-1.0 mean reciprocal rank
+    eval_ndcg: float | None = None  # 0.0-1.0 ndcg@k score
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -148,6 +151,9 @@ def aggregate(
 
     faith_scores = [e.eval_faithfulness for e in win if e.eval_faithfulness is not None]
     rel_scores = [e.eval_relevance for e in win if e.eval_relevance is not None]
+    recall_scores = [e.eval_recall for e in win if e.eval_recall is not None]
+    mrr_scores = [e.eval_mrr for e in win if e.eval_mrr is not None]
+    ndcg_scores = [e.eval_ndcg for e in win if e.eval_ndcg is not None]
 
     op_mix: dict[str, int] = {}
     ns_mix: dict[str, int] = {}
@@ -179,7 +185,12 @@ def aggregate(
         if faith_scores
         else None,
         "eval_relevance_mean": round(sum(rel_scores) / len(rel_scores), 4) if rel_scores else None,
-        "eval_count": max(len(faith_scores), len(rel_scores)),
+        "eval_recall_mean": round(sum(recall_scores) / len(recall_scores), 4)
+        if recall_scores
+        else None,
+        "eval_mrr_mean": round(sum(mrr_scores) / len(mrr_scores), 4) if mrr_scores else None,
+        "eval_ndcg_mean": round(sum(ndcg_scores) / len(ndcg_scores), 4) if ndcg_scores else None,
+        "eval_count": max(len(faith_scores), len(rel_scores), len(recall_scores)),
         "op_mix": op_mix,
         "namespaces": ns_mix,
         "histogram": hist,
@@ -200,10 +211,19 @@ def aggregate_eval(
     win = [e for e in events if e.ts >= start]
 
     eval_events = [
-        e for e in win if e.eval_faithfulness is not None or e.eval_relevance is not None
+        e
+        for e in win
+        if e.eval_faithfulness is not None
+        or e.eval_relevance is not None
+        or e.eval_recall is not None
+        or e.eval_mrr is not None
+        or e.eval_ndcg is not None
     ]
     faith_scores = [e.eval_faithfulness for e in eval_events if e.eval_faithfulness is not None]
     rel_scores = [e.eval_relevance for e in eval_events if e.eval_relevance is not None]
+    recall_scores = [e.eval_recall for e in eval_events if e.eval_recall is not None]
+    mrr_scores = [e.eval_mrr for e in eval_events if e.eval_mrr is not None]
+    ndcg_scores = [e.eval_ndcg for e in eval_events if e.eval_ndcg is not None]
 
     pass_threshold = 0.7
     passed = [
@@ -211,6 +231,7 @@ def aggregate_eval(
         for e in eval_events
         if (e.eval_faithfulness is None or e.eval_faithfulness >= pass_threshold)
         and (e.eval_relevance is None or e.eval_relevance >= pass_threshold)
+        and (e.eval_recall is None or e.eval_recall >= pass_threshold)
     ]
 
     return {
@@ -219,6 +240,9 @@ def aggregate_eval(
         if faith_scores
         else None,
         "mean_relevance": round(sum(rel_scores) / len(rel_scores), 4) if rel_scores else None,
+        "mean_recall": round(sum(recall_scores) / len(recall_scores), 4) if recall_scores else None,
+        "mean_mrr": round(sum(mrr_scores) / len(mrr_scores), 4) if mrr_scores else None,
+        "mean_ndcg": round(sum(ndcg_scores) / len(ndcg_scores), 4) if ndcg_scores else None,
         "pass_rate": round(len(passed) / len(eval_events), 4) if eval_events else None,
         "pass_threshold": pass_threshold,
         "window_seconds": window_seconds,
