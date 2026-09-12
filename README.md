@@ -1,5 +1,10 @@
 # dynavec
 
+[![PyPI version](https://img.shields.io/pypi/v/dynavec?style=flat-square&color=e8623b&label=release)](https://pypi.org/project/dynavec/)
+[![Python versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-3776ab?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/dynavec/)
+[![CI](https://img.shields.io/github/actions/workflow/status/codeforstartups/dynavec/ci.yml?branch=development&style=flat-square&label=CI)](https://github.com/codeforstartups/dynavec/actions/workflows/ci.yml)
+[![License](https://img.shields.io/pypi/l/dynavec?style=flat-square&color=green)](https://github.com/codeforstartups/dynavec/blob/development/LICENSE)
+
 **Serverless, in-your-own-account hybrid vector database on AWS.**
 `dynavec` fuses **Amazon DynamoDB** (single-digit-millisecond metadata + document store) with **Amazon S3 Vectors** (billion-scale, AWS-managed approximate-nearest-neighbor search) into one Python client — a drop-in alternative to Pinecone, Qdrant, Milvus, Weaviate, and OpenSearch that **runs entirely inside your AWS account** and **bills only when you use it**.
 
