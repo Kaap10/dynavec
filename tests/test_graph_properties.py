@@ -127,3 +127,42 @@ def test_graph_add_edge_forwards_weight_props_and_bidirectional_values():
         ("tenant", "source", "connects", "target", 3.5, props),
         ("tenant", "target", "connects", "source", 3.5, props),
     ]
+
+
+def test_add_edge_and_link_docs_preserve_existing_node_metadata(store):
+    store.add_node("ns", "alice", ntype="Person", props={"role": "Admin", "dept": "Eng"})
+    store.add_node("ns", "bob", ntype="Person", props={"role": "Dev", "dept": "Design"})
+
+    store.add_edge("ns", "alice", "manages", "bob", weight=1.0)
+
+    alice_node = store.get_node("ns", "alice")
+    bob_node = store.get_node("ns", "bob")
+
+    assert alice_node["ntype"] == "Person"
+    assert alice_node["props"] == {"role": "Admin", "dept": "Eng"}
+    assert len(alice_node["edges"]) == 1
+
+    assert bob_node["ntype"] == "Person"
+    assert bob_node["props"] == {"role": "Dev", "dept": "Design"}
+
+    store.link_docs("ns", "alice", ["doc-1", "doc-2"])
+    alice_node_after_link = store.get_node("ns", "alice")
+
+    assert alice_node_after_link["ntype"] == "Person"
+    assert alice_node_after_link["props"] == {"role": "Admin", "dept": "Eng"}
+    assert alice_node_after_link["docs"] == ["doc-1", "doc-2"]
+
+
+def test_add_node_partial_update_preserves_unspecified_attributes(store):
+    store.add_node("ns", "user", ntype="Person", props={"age": Decimal("30")})
+
+    store.add_node("ns", "user", props={"age": Decimal("31"), "city": "NYC"})
+    node = store.get_node("ns", "user")
+    assert node["ntype"] == "Person"
+    assert node["props"] == {"age": Decimal("31"), "city": "NYC"}
+
+    store.add_node("ns", "user", ntype="Admin")
+    node_after_ntype = store.get_node("ns", "user")
+    assert node_after_ntype["ntype"] == "Admin"
+    assert node_after_ntype["props"] == {"age": Decimal("31"), "city": "NYC"}
+

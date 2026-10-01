@@ -188,20 +188,38 @@ class GraphStore:
     def add_node(
         self, ns: str, entity_id: str, ntype: str | None = None, props: Props | None = None
     ) -> None:
+        set_clauses = [
+            "kind = if_not_exists(kind, :k)",
+            "ns = if_not_exists(ns, :ns)",
+            "entity_id = if_not_exists(entity_id, :eid)",
+            "edges = if_not_exists(edges, :empty_list)",
+            "docs = if_not_exists(docs, :empty_list)",
+        ]
+        values: dict[str, Any] = {
+            ":k": "node",
+            ":ns": ns,
+            ":eid": entity_id,
+            ":empty_list": [],
+        }
+
+        if ntype is not None:
+            set_clauses.append("ntype = :t")
+            values[":t"] = ntype
+        else:
+            set_clauses.append("ntype = if_not_exists(ntype, :null)")
+            values[":null"] = None
+
+        if props is not None:
+            set_clauses.append("props = :p")
+            values[":p"] = props
+        else:
+            set_clauses.append("props = if_not_exists(props, :empty_map)")
+            values[":empty_map"] = {}
+
         self._table.update_item(
             Key={"pk": self._node_pk(ns, entity_id)},
-            UpdateExpression=(
-                "SET kind = :k, ns = :ns, entity_id = :eid, ntype = :t, props = :p, "
-                "edges = if_not_exists(edges, :empty), docs = if_not_exists(docs, :empty)"
-            ),
-            ExpressionAttributeValues={
-                ":k": "node",
-                ":ns": ns,
-                ":eid": entity_id,
-                ":t": ntype,
-                ":p": props or {},
-                ":empty": [],
-            },
+            UpdateExpression="SET " + ", ".join(set_clauses),
+            ExpressionAttributeValues=values,
         )
 
     @retry()
