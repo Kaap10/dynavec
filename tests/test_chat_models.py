@@ -123,8 +123,16 @@ class FakeAnthropicMessages:
         class FakeStreamContext:
             def __enter__(self):
                 return [
-                    SimpleNamespace(type="text_stream", text="Streamed "),
-                    SimpleNamespace(type="input_json", partial_json='{"loc":"NY"}'),
+                    SimpleNamespace(
+                        type="content_block_delta",
+                        delta=SimpleNamespace(type="text_delta", text="Streamed "),
+                    ),
+                    SimpleNamespace(
+                        type="content_block_delta",
+                        delta=SimpleNamespace(
+                            type="input_json_delta", partial_json='{"loc":"NY"}'
+                        ),
+                    ),
                 ]
 
             def __exit__(self, exc_type, exc_val, exc_tb):

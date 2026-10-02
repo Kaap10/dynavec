@@ -133,11 +133,20 @@ class AnthropicChatModel(ChatModel):
 
         with self._client.messages.stream(**args) as stream:
             for event in stream:
-                if event.type == "text_stream":
-                    yield ChatChunk(content=event.text)
-                elif event.type == "input_json":
+                if event.type != "content_block_delta":
+                    continue
+
+                delta = event.delta
+
+                if delta.type == "text_delta":
+                    yield ChatChunk(content=delta.text)
+                elif delta.type == "input_json_delta":
                     yield ChatChunk(
                         tool_calls=[
-                            ToolCall(id="", name="", arguments=event.partial_json)
+                            ToolCall(
+                                id="",
+                                name="",
+                                arguments=delta.partial_json,
+                            )
                         ]
                     )
