@@ -81,7 +81,7 @@ class ChatModel(ABC):
         **kwargs: Any
     ) -> AsyncIterator[ChatChunk]:
         """Stream the chat model response asynchronously. Default delegates to thread."""
-        def _sync_stream():
+        def _sync_stream() -> list[ChatChunk]:
             return list(self.stream(messages, tools, **kwargs))
         
         chunks = await asyncio.to_thread(_sync_stream)

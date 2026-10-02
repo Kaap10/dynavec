@@ -34,6 +34,7 @@ dependencies = [
 [project.optional-dependencies]
 # --- Pluggable, bring-your-own-key embedders (users pick one or more) ---
 openai = ["openai>=1.40"]
+anthropic = ["anthropic>=0.40"]
 gemini = ["google-generativeai>=0.8"]
 cohere = ["cohere>=5.0"]
 voyage = ["voyageai>=0.3.2"]
@@ -64,9 +65,11 @@ typecheck = [
     "haystack-ai>=2.0",
     "dspy>=3.3; python_version >= '3.10'",
     "semantic-kernel>=1.44; python_version >= '3.10'",
+    "anthropic>=0.40",
 ]
 all = [
     "openai>=1.40",
+    "anthropic>=0.40",
     "google-generativeai>=0.8",
     "cohere>=5.0",
     "voyageai>=0.3.2",
@@ -141,6 +144,8 @@ show_error_codes = true
 # dynavec code that uses them.
 [[tool.mypy.overrides]]
 module = [
+    "anthropic",
+    "anthropic.*",
     "bs4",
     "bs4.*",
     "boto3",
