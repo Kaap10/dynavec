@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from ..chat.base import ChatModel, Message, Tool
+from ..chat.base import ChatModel, Message, Tool, ToolCall
 from .base import AgentResult, AgentStep, AgentTool
 from .registry import ToolRegistry
 
@@ -41,18 +40,84 @@ class ReActAgent:
                 self._chat_tools.append(t.to_chat_tool())
         elif tools:
             for raw_tool in tools:
-                agent_tool = raw_tool if isinstance(raw_tool, AgentTool) else AgentTool(raw_tool)
-                agent_tool = t if isinstance(t, AgentTool) else AgentTool(t)
+                agent_tool = (
+                    raw_tool if isinstance(raw_tool, AgentTool) else AgentTool(raw_tool)
+                )
                 self._tools_map[agent_tool.name] = agent_tool
                 self._chat_tools.append(agent_tool.to_chat_tool())
 
-    def run(self, goal: str, **kwargs: Any) -> AgentResult:
-        """Execute the ReAct loop synchronously until goal completion or max_steps."""
+    def _init_messages(self, goal: str) -> list[Message]:
         messages: list[Message] = []
         if self.system_prompt:
             messages.append(Message(role="system", content=self.system_prompt))
         messages.append(Message(role="user", content=goal))
+        return messages
 
+    def _dispatch_tool_call(self, tc: ToolCall) -> str:
+        tool_instance = self._tools_map.get(tc.name)
+        if tool_instance is not None:
+            return tool_instance.execute(tc.arguments)
+        return f"Error: Tool {tc.name!r} is not registered in available tools."
+
+    async def _adispatch_tool_call(self, tc: ToolCall) -> str:
+        tool_instance = self._tools_map.get(tc.name)
+        if tool_instance is not None:
+            return await tool_instance.aexecute(tc.arguments)
+        return f"Error: Tool {tc.name!r} is not registered in available tools."
+
+    def _process_tool_calls(
+        self, tool_calls: list[ToolCall], messages: list[Message]
+    ) -> list[str]:
+        step_observations: list[str] = []
+        for tc in tool_calls:
+            obs = self._dispatch_tool_call(tc)
+            step_observations.append(obs)
+            messages.append(
+                Message(
+                    role="tool",
+                    content=obs,
+                    tool_call_id=tc.id,
+                )
+            )
+        return step_observations
+
+    async def _aprocess_tool_calls(
+        self, tool_calls: list[ToolCall], messages: list[Message]
+    ) -> list[str]:
+        step_observations: list[str] = []
+        for tc in tool_calls:
+            obs = await self._adispatch_tool_call(tc)
+            step_observations.append(obs)
+            messages.append(
+                Message(
+                    role="tool",
+                    content=obs,
+                    tool_call_id=tc.id,
+                )
+            )
+        return step_observations
+
+    def _finalize_result(
+        self, steps: list[AgentStep], total_tool_calls: int
+    ) -> AgentResult:
+        last_output = (
+            steps[-1].thought
+            or (steps[-1].observations[-1] if steps[-1].observations else "")
+            if steps
+            else ""
+        )
+        return AgentResult(
+            output=last_output,
+            steps=steps,
+            finished=False,
+            termination_reason="max_steps_reached",
+            total_steps=self.max_steps,
+            tool_calls_count=total_tool_calls,
+        )
+
+    def run(self, goal: str, **kwargs: Any) -> AgentResult:
+        """Execute the ReAct loop synchronously until goal completion or max_steps."""
+        messages = self._init_messages(goal)
         steps: list[AgentStep] = []
         total_tool_calls = 0
 
@@ -66,7 +131,6 @@ class ReActAgent:
             messages.append(msg)
 
             if not msg.tool_calls:
-                # Final response reached without further tool calls
                 step = AgentStep(
                     step_number=step_idx,
                     thought=msg.content,
@@ -83,24 +147,8 @@ class ReActAgent:
                     tool_calls_count=total_tool_calls,
                 )
 
-            # Execute tool calls
-            step_observations: list[str] = []
-            for tc in msg.tool_calls:
-                total_tool_calls += 1
-                tool_instance = self._tools_map.get(tc.name)
-                if tool_instance is not None:
-                    obs = tool_instance.execute(tc.arguments)
-                else:
-                    obs = f"Error: Tool {tc.name!r} is not registered in available tools."
-
-                step_observations.append(obs)
-                messages.append(
-                    Message(
-                        role="tool",
-                        content=obs,
-                        tool_call_id=tc.id,
-                    )
-                )
+            total_tool_calls += len(msg.tool_calls)
+            step_observations = self._process_tool_calls(list(msg.tool_calls), messages)
 
             step = AgentStep(
                 step_number=step_idx,
@@ -110,26 +158,11 @@ class ReActAgent:
             )
             steps.append(step)
 
-        # Reached max steps without completing
-        last_output = steps[-1].thought or (
-            steps[-1].observations[-1] if steps[-1].observations else ""
-        )
-        return AgentResult(
-            output=last_output,
-            steps=steps,
-            finished=False,
-            termination_reason="max_steps_reached",
-            total_steps=self.max_steps,
-            tool_calls_count=total_tool_calls,
-        )
+        return self._finalize_result(steps, total_tool_calls)
 
     async def arun(self, goal: str, **kwargs: Any) -> AgentResult:
         """Execute the ReAct loop asynchronously."""
-        messages: list[Message] = []
-        if self.system_prompt:
-            messages.append(Message(role="system", content=self.system_prompt))
-        messages.append(Message(role="user", content=goal))
-
+        messages = self._init_messages(goal)
         steps: list[AgentStep] = []
         total_tool_calls = 0
 
@@ -159,23 +192,10 @@ class ReActAgent:
                     tool_calls_count=total_tool_calls,
                 )
 
-            step_observations: list[str] = []
-            for tc in msg.tool_calls:
-                total_tool_calls += 1
-                tool_instance = self._tools_map.get(tc.name)
-                if tool_instance is not None:
-                    obs = await asyncio.to_thread(tool_instance.execute, tc.arguments)
-                else:
-                    obs = f"Error: Tool {tc.name!r} is not registered in available tools."
-
-                step_observations.append(obs)
-                messages.append(
-                    Message(
-                        role="tool",
-                        content=obs,
-                        tool_call_id=tc.id,
-                    )
-                )
+            total_tool_calls += len(msg.tool_calls)
+            step_observations = await self._aprocess_tool_calls(
+                list(msg.tool_calls), messages
+            )
 
             step = AgentStep(
                 step_number=step_idx,
@@ -185,14 +205,4 @@ class ReActAgent:
             )
             steps.append(step)
 
-        last_output = steps[-1].thought or (
-            steps[-1].observations[-1] if steps[-1].observations else ""
-        )
-        return AgentResult(
-            output=last_output,
-            steps=steps,
-            finished=False,
-            termination_reason="max_steps_reached",
-            total_steps=self.max_steps,
-            tool_calls_count=total_tool_calls,
-        )
+        return self._finalize_result(steps, total_tool_calls)
