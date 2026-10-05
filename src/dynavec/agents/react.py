@@ -8,6 +8,7 @@ from typing import Any
 
 from ..chat.base import ChatModel, Message, Tool
 from .base import AgentResult, AgentStep, AgentTool
+from .registry import ToolRegistry
 
 DEFAULT_REACT_SYSTEM_PROMPT = """You are a helpful and precise reasoning agent.
 You solve tasks step-by-step using a ReAct (Reason + Act) approach.
@@ -21,7 +22,7 @@ class ReActAgent:
     def __init__(
         self,
         model: ChatModel,
-        tools: Sequence[AgentTool | Callable[..., Any]] | None = None,
+        tools: Sequence[AgentTool | Callable[..., Any]] | ToolRegistry | None = None,
         system_prompt: str | None = None,
         max_steps: int = 10,
     ) -> None:
@@ -34,8 +35,13 @@ class ReActAgent:
         self._tools_map: dict[str, AgentTool] = {}
         self._chat_tools: list[Tool] = []
 
-        if tools:
-            for t in tools:
+        if isinstance(tools, ToolRegistry):
+            for t in tools.list_tools():
+                self._tools_map[t.name] = t
+                self._chat_tools.append(t.to_chat_tool())
+        elif tools:
+            for raw_tool in tools:
+                agent_tool = raw_tool if isinstance(raw_tool, AgentTool) else AgentTool(raw_tool)
                 agent_tool = t if isinstance(t, AgentTool) else AgentTool(t)
                 self._tools_map[agent_tool.name] = agent_tool
                 self._chat_tools.append(agent_tool.to_chat_tool())

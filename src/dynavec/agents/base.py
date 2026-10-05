@@ -114,6 +114,7 @@ class AgentTool:
         name: str | None = None,
         description: str | None = None,
         parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> None:
         self.fn = fn
         self.name = name or fn.__name__
@@ -121,6 +122,7 @@ class AgentTool:
         self.parameters = (
             parameters if parameters is not None else _generate_json_schema(fn)
         )
+        self.tags = tags or []
 
     def to_chat_tool(self) -> Tool:
         """Convert to a dynavec.chat.Tool schema."""
@@ -130,8 +132,8 @@ class AgentTool:
             parameters=self.parameters,
         )
 
-    def execute(self, arguments: dict[str, Any] | str | None = None) -> str:
-        """Execute the wrapped function and return a string observation."""
+    def _parse_arguments(self, arguments: dict[str, Any] | str | None = None) -> dict[str, Any]:
+        """Parse raw arguments into a kwargs dictionary."""
         parsed_args: dict[str, Any] = {}
         if isinstance(arguments, str):
             if arguments.strip():
@@ -145,24 +147,64 @@ class AgentTool:
                     parsed_args = {"input": arguments}
         elif isinstance(arguments, dict):
             parsed_args = arguments
+        return parsed_args
 
+    def _prepare_call(self, parsed_args: dict[str, Any]) -> dict[str, Any]:
+        """Prepare validated kwargs for the function."""
+        sig = inspect.signature(self.fn)
+        params = sig.parameters
+        if not params:
+            return {}
+        if len(params) == 1:
+            param = next(iter(params.values()))
+            if param.kind == inspect.Parameter.VAR_KEYWORD:
+                return parsed_args
+            if param.name not in parsed_args:
+                first_val = next(iter(parsed_args.values())) if parsed_args else None
+                return {param.name: first_val}
+
+        valid_args = {}
+        for k, v in parsed_args.items():
+            if k in params or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
+                valid_args[k] = v
+        return valid_args
+
+    def execute(self, arguments: dict[str, Any] | str | None = None) -> str:
+        """Execute the wrapped function synchronously and return a string observation."""
         try:
-            # Check if function accepts kwargs or positional
-            sig = inspect.signature(self.fn)
-            params = sig.parameters
-
-            if not params:
-                result = self.fn()
-            elif len(params) == 1 and list(params.keys())[0] not in parsed_args:
-                # If single param expected and keys don't match, pass the first val or raw dict
-                first_val = (
-                    next(iter(parsed_args.values())) if parsed_args else arguments
-                )
-                result = self.fn(first_val)
+            parsed_args = self._parse_arguments(arguments)
+            kwargs = self._prepare_call(parsed_args)
+            
+            if inspect.iscoroutinefunction(self.fn):
+                import asyncio
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = None
+                    
+                if loop and loop.is_running():
+                    return f"Error: Cannot execute async tool {self.name!r} synchronously in a running event loop."
+                result = asyncio.run(self.fn(**kwargs))
             else:
-                # Filter only valid keyword arguments
-                valid_args = {k: v for k, v in parsed_args.items() if k in params}
-                result = self.fn(**valid_args)
+                result = self.fn(**kwargs)
+
+            if isinstance(result, str):
+                return result
+            return json.dumps(result, ensure_ascii=False)
+        except Exception as exc:  # noqa: BLE001
+            return f"Error executing tool {self.name!r}: {exc}"
+
+    async def aexecute(self, arguments: dict[str, Any] | str | None = None) -> str:
+        """Execute the wrapped function asynchronously and return a string observation."""
+        try:
+            parsed_args = self._parse_arguments(arguments)
+            kwargs = self._prepare_call(parsed_args)
+            
+            if inspect.iscoroutinefunction(self.fn):
+                result = await self.fn(**kwargs)
+            else:
+                import asyncio
+                result = await asyncio.to_thread(self.fn, **kwargs)
 
             if isinstance(result, str):
                 return result
@@ -178,6 +220,7 @@ def tool(
     name: str | None = None,
     description: str | None = None,
     parameters: dict[str, Any] | None = None,
+    tags: list[str] | None = None,
 ) -> Callable[[Callable[..., Any]], AgentTool]:
     """Decorator to convert a standard Python function into an AgentTool."""
 
@@ -187,6 +230,7 @@ def tool(
             name=name,
             description=description,
             parameters=parameters,
+            tags=tags,
         )
 
     return decorator
