@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 from ..exceptions import MissingDependencyError
@@ -29,21 +29,22 @@ class OpenAIChatModel(ChatModel):
         base_url: str | None = None,
     ) -> None:
         try:
-            from openai import OpenAI
+            from openai import AsyncOpenAI, OpenAI
         except ImportError as exc:
             raise MissingDependencyError("OpenAIChatModel", "openai", "openai") from exc
 
         self.model = model
         self._client = OpenAI(api_key=api_key, base_url=base_url)
+        self._async_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     def _convert_messages(self, messages: list[Message]) -> list[dict[str, Any]]:
         out = []
         for msg in messages:
             d: dict[str, Any] = {"role": msg.role}
-            
+
             if msg.content is not None:
                 d["content"] = msg.content
-                
+
             if msg.tool_calls:
                 d["tool_calls"] = [
                     {
@@ -53,11 +54,11 @@ class OpenAIChatModel(ChatModel):
                     }
                     for tc in msg.tool_calls
                 ]
-                
+
             if msg.tool_call_id:
                 d["tool_call_id"] = msg.tool_call_id
                 d["name"] = "tool"  # some models/APIs require a name
-                
+
             out.append(d)
         return out
 
@@ -76,21 +77,10 @@ class OpenAIChatModel(ChatModel):
             for t in tools
         ]
 
-    def invoke(
-        self, messages: list[Message], tools: list[Tool] | None = None, **kwargs: Any
-    ) -> ChatResult:
-        """Invoke the chat model synchronously."""
-        openai_msgs = self._convert_messages(messages)
-        openai_tools = self._convert_tools(tools)
-        
-        args: dict[str, Any] = {"model": self.model, "messages": openai_msgs, **kwargs}
-        if openai_tools:
-            args["tools"] = openai_tools
-
-        resp = self._client.chat.completions.create(**args)
-        choice = resp.choices[0]
-        
-        out_msg = Message(role=choice.message.role or "assistant", content=choice.message.content)
+    def _format_result(self, choice: Any) -> ChatResult:
+        out_msg = Message(
+            role=choice.message.role or "assistant", content=choice.message.content
+        )
         if choice.message.tool_calls:
             out_msg.tool_calls = [
                 ToolCall(
@@ -100,38 +90,118 @@ class OpenAIChatModel(ChatModel):
                 )
                 for tc in choice.message.tool_calls
             ]
-
         return ChatResult(message=out_msg, finish_reason=choice.finish_reason)
 
-    def stream(
+    def invoke(
         self, messages: list[Message], tools: list[Tool] | None = None, **kwargs: Any
-    ) -> Iterator[ChatChunk]:
-        """Stream the chat model response."""
+    ) -> ChatResult:
+        """Invoke the chat model synchronously."""
         openai_msgs = self._convert_messages(messages)
         openai_tools = self._convert_tools(tools)
-        
-        args: dict[str, Any] = {"model": self.model, "messages": openai_msgs, "stream": True, **kwargs}
+
+        args: dict[str, Any] = {"model": self.model, "messages": openai_msgs, **kwargs}
         if openai_tools:
             args["tools"] = openai_tools
 
         resp = self._client.chat.completions.create(**args)
-        
+        choice = resp.choices[0]
+        return self._format_result(choice)
+
+    async def ainvoke(
+        self, messages: list[Message], tools: list[Tool] | None = None, **kwargs: Any
+    ) -> ChatResult:
+        """Invoke the chat model asynchronously."""
+        openai_msgs = self._convert_messages(messages)
+        openai_tools = self._convert_tools(tools)
+
+        args: dict[str, Any] = {"model": self.model, "messages": openai_msgs, **kwargs}
+        if openai_tools:
+            args["tools"] = openai_tools
+
+        resp = await self._async_client.chat.completions.create(**args)
+        choice = resp.choices[0]
+        return self._format_result(choice)
+
+    def stream(
+        self, messages: list[Message], tools: list[Tool] | None = None, **kwargs: Any
+    ) -> Iterator[ChatChunk]:
+        """Stream the chat model response synchronously."""
+        openai_msgs = self._convert_messages(messages)
+        openai_tools = self._convert_tools(tools)
+
+        args: dict[str, Any] = {
+            "model": self.model,
+            "messages": openai_msgs,
+            "stream": True,
+            **kwargs,
+        }
+        if openai_tools:
+            args["tools"] = openai_tools
+
+        resp = self._client.chat.completions.create(**args)
+
         for chunk in resp:
             if not chunk.choices:
                 continue
-                
+
             choice = chunk.choices[0]
             delta = choice.delta
-            
+
             tool_calls = []
             if delta.tool_calls:
                 for tc in delta.tool_calls:
                     tool_calls.append(
                         ToolCall(
                             id=tc.id or "",
-                            name=tc.function.name if (tc.function and tc.function.name) else "",
-                            arguments=tc.function.arguments if (tc.function and tc.function.arguments) else "",
+                            name=tc.function.name
+                            if (tc.function and tc.function.name)
+                            else "",
+                            arguments=tc.function.arguments
+                            if (tc.function and tc.function.arguments)
+                            else "",
                         )
                     )
-                    
+
+            yield ChatChunk(content=delta.content, tool_calls=tool_calls)
+
+    async def astream(
+        self, messages: list[Message], tools: list[Tool] | None = None, **kwargs: Any
+    ) -> AsyncIterator[ChatChunk]:
+        """Stream the chat model response asynchronously in real time."""
+        openai_msgs = self._convert_messages(messages)
+        openai_tools = self._convert_tools(tools)
+
+        args: dict[str, Any] = {
+            "model": self.model,
+            "messages": openai_msgs,
+            "stream": True,
+            **kwargs,
+        }
+        if openai_tools:
+            args["tools"] = openai_tools
+
+        resp = await self._async_client.chat.completions.create(**args)
+
+        async for chunk in resp:
+            if not chunk.choices:
+                continue
+
+            choice = chunk.choices[0]
+            delta = choice.delta
+
+            tool_calls = []
+            if delta.tool_calls:
+                for tc in delta.tool_calls:
+                    tool_calls.append(
+                        ToolCall(
+                            id=tc.id or "",
+                            name=tc.function.name
+                            if (tc.function and tc.function.name)
+                            else "",
+                            arguments=tc.function.arguments
+                            if (tc.function and tc.function.arguments)
+                            else "",
+                        )
+                    )
+
             yield ChatChunk(content=delta.content, tool_calls=tool_calls)
